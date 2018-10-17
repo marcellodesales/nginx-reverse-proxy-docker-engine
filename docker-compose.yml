@@ -1,0 +1,23 @@
+version: "2.2"
+
+services:
+  nginx:
+    image: nginx
+    volumes:
+        - ./reverse-proxy.template.conf:/etc/nginx/conf.d/mysite.template
+        - ./server.crt:/etc/nginx/ssl/server.crt # cat bundle.crt >> your-cert.crt (full certificate chain)
+        - ./server.key:/etc/nginx/ssl/server.key # use as provided
+    ports:
+        - "8443:443"
+    links:
+        - "api-server:api-server" # linking to your service application
+    environment:
+        - NGINX_HOST=api.my.app.io
+        - NGINX_PORT_REDIRECT=8099 # port from your app service container
+        - DOCKER_SERVICE_NAME=api-server # the name of your service in docker-compose
+    command: /bin/bash -c "envsubst '$$NGINX_HOST $$DOCKER_SERVICE_NAME $$NGINX_HOST_REDIRECT $$NGINX_PORT $$NGINX_PORT_REDIRECT' < /etc/nginx/conf.d/mysite.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+  api-server:
+    image: marcellodesales/whoami
+    environment:
+      - PORT=8099 # this is app specific  (see image at https://github.com/marcellodesales/whoami-docker)
